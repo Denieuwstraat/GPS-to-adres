@@ -72,14 +72,13 @@ if st.button("Bereken middelpunt en vind adres"):
         else:
             st.write(display_name)
         
-        # Data voor de kaart (scatterpunt + tekst)
+        # Data voor de kaart (scatterpunt)
         map_data = pd.DataFrame({
             'lat': [center[0]],
             'lon': [center[1]],
-            'label': [formatted_address]
         })
         
-        # Stel de kaart in met een tekstlabel
+        # Stel de kaart in met een semi-transparante stip
         st.pydeck_chart(pdk.Deck(
             map_style='mapbox://styles/mapbox/streets-v11',
             initial_view_state=pdk.ViewState(
@@ -94,18 +93,8 @@ if st.button("Bereken middelpunt en vind adres"):
                     data=map_data,
                     get_position='[lon, lat]',
                     get_radius=100,
-                    get_color=[255, 0, 0],
+                    get_color=[255, 0, 0, 128],  # Semi-transparante rode stip (RGBA)
                     pickable=True
-                ),
-                pdk.Layer(
-                    "TextLayer",
-                    data=map_data,
-                    get_position='[lon, lat]',
-                    get_text='label',
-                    get_size=16,
-                    get_color=[0, 0, 0],
-                    get_angle=0,
-                    background=True,
                 ),
             ],
         ))
