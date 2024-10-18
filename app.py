@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import pydeck as pdk
 
 # Functie om het middelpunt van GPS-coördinaten te berekenen
 def calculate_center(coordinates):
@@ -26,11 +27,11 @@ def reverse_geocode_nominatim(lat, lng):
     if response.status_code == 200:
         data = response.json()
         if 'error' not in data:
-            return data['display_name']
+            return data['address'], data['display_name']
         else:
-            return "Geen adres gevonden"
+            return None, "Geen adres gevonden"
     else:
-        return f"Foutcode: {response.status_code}"
+        return None, f"Foutcode: {response.status_code}"
 
 # Streamlit app
 st.title("Omgekeerde Geocodering met GPS-coördinaten")
@@ -50,15 +51,44 @@ if st.button("Bereken middelpunt en vind adres"):
         st.write(f"Middelpunt: {center}")
         
         # Roep de Nominatim API aan voor het adres
-        address = reverse_geocode_nominatim(center[0], center[1])
-        st.write(f"Het gevonden adres is: {address}")
+        address_details, display_name = reverse_geocode_nominatim(center[0], center[1])
         
-        # Toon het middelpunt op de kaart
-        df = pd.DataFrame({
+        if address_details:
+            # Toon het volledige adres, inclusief huisnummer
+            st.write(f"Het gevonden adres is: {display_name}")
+            if 'house_number' in address_details:
+                st.write(f"Huisnummer: {address_details['house_number']}")
+            else:
+                st.write("Huisnummer niet beschikbaar.")
+        else:
+            st.write(display_name)
+        
+        # Toon het middelpunt op de kaart met inzoommogelijkheid via pydeck
+        map_df = pd.DataFrame({
             'lat': [center[0]],
             'lon': [center[1]]
         })
-        st.map(df)
+        
+        # Stel de zoom in
+        st.pydeck_chart(pdk.Deck(
+            map_style='mapbox://styles/mapbox/streets-v11',
+            initial_view_state=pdk.ViewState(
+                latitude=center[0],
+                longitude=center[1],
+                zoom=16,  # Stel zoomniveau in
+                pitch=50,
+            ),
+            layers=[
+                pdk.Layer(
+                    'ScatterplotLayer',
+                    data=map_df,
+                    get_position='[lon, lat]',
+                    get_radius=100,
+                    get_color=[255, 0, 0],
+                    pickable=True
+                ),
+            ],
+        ))
         
     except Exception as e:
         st.error(f"Er is een fout opgetreden: {e}")
