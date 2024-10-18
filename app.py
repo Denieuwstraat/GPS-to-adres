@@ -33,6 +33,18 @@ def reverse_geocode_nominatim(lat, lng):
     else:
         return None, f"Foutcode: {response.status_code}"
 
+# Functie om het adres te formatteren
+def format_address(address_details):
+    # Ophalen van de benodigde adrescomponenten
+    straat = address_details.get('road', 'Onbekende straat')
+    huisnummer = address_details.get('house_number', '')
+    postcode = address_details.get('postcode', 'Onbekende postcode')
+    woonplaats = address_details.get('city', address_details.get('town', address_details.get('village', 'Onbekende plaats')))
+    
+    # Adres samenstellen
+    formatted_address = f"{straat} {huisnummer}, {postcode}, {woonplaats}"
+    return formatted_address
+
 # Streamlit app
 st.title("Omgekeerde Geocodering met GPS-coördinaten")
 
@@ -54,22 +66,20 @@ if st.button("Bereken middelpunt en vind adres"):
         address_details, display_name = reverse_geocode_nominatim(center[0], center[1])
         
         if address_details:
-            # Toon het volledige adres, inclusief huisnummer
-            st.write(f"Het gevonden adres is: {display_name}")
-            if 'house_number' in address_details:
-                st.write(f"Huisnummer: {address_details['house_number']}")
-            else:
-                st.write("Huisnummer niet beschikbaar.")
+            # Formatteer het adres zoals gevraagd
+            formatted_address = format_address(address_details)
+            st.write(f"Het gevonden adres is: {formatted_address}")
         else:
             st.write(display_name)
         
-        # Toon het middelpunt op de kaart met inzoommogelijkheid via pydeck
-        map_df = pd.DataFrame({
+        # Data voor de kaart (scatterpunt + tekst)
+        map_data = pd.DataFrame({
             'lat': [center[0]],
-            'lon': [center[1]]
+            'lon': [center[1]],
+            'label': [formatted_address]
         })
         
-        # Stel de zoom in
+        # Stel de kaart in met een tekstlabel
         st.pydeck_chart(pdk.Deck(
             map_style='mapbox://styles/mapbox/streets-v11',
             initial_view_state=pdk.ViewState(
@@ -81,11 +91,21 @@ if st.button("Bereken middelpunt en vind adres"):
             layers=[
                 pdk.Layer(
                     'ScatterplotLayer',
-                    data=map_df,
+                    data=map_data,
                     get_position='[lon, lat]',
                     get_radius=100,
                     get_color=[255, 0, 0],
                     pickable=True
+                ),
+                pdk.Layer(
+                    "TextLayer",
+                    data=map_data,
+                    get_position='[lon, lat]',
+                    get_text='label',
+                    get_size=16,
+                    get_color=[0, 0, 0],
+                    get_angle=0,
+                    background=True,
                 ),
             ],
         ))
